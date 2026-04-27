@@ -354,8 +354,6 @@ const video=document.getElementById("camera")
 const freezeCanvas=document.getElementById("freezeCanvas")
 const freezeCtx=freezeCanvas.getContext("2d")
 
-const shareButton=document.getElementById("shareButton")
-
 const menu=document.getElementById("menu")
 const menuButton=document.getElementById("menuButton")
 const infoButton=document.getElementById("infoButton")
@@ -368,6 +366,7 @@ const contrastButton=document.getElementById("contrastButton")
 const audioButton=document.getElementById("audioButton")
 const torchButton=document.getElementById("torchButton")
 const freezeButton=document.getElementById("freezeButton")
+const shareButton=document.getElementById("shareButton")
 
 let videoTrack=null
 let torchOn=false
@@ -406,24 +405,18 @@ speechSynthesis.speak(msg)
 /* CAMERA */
 
 async function startCamera(){
-
 try{
-
 const stream=await navigator.mediaDevices.getUserMedia({
-
 video:{
 facingMode:{ ideal:"environment" },
 frameRate:{ ideal:24,max:24 }
 },
-
 audio:false
-
 })
-
 video.srcObject=stream
 videoTrack=stream.getVideoTracks()[0]
 
-freezeButton.style.display="block"
+freezeButton.style.display="none"
 
 try{
 videoTrack.applyConstraints({advanced:[{torch:false}]})
@@ -431,43 +424,32 @@ videoTrack.applyConstraints({advanced:[{torch:false}]})
 
 speak("Camera ready")
 
-videoTrack.addEventListener("ended",()=>{
-speak("Camera stopped. Please reopen the app.")
-})
-
 }catch{
-
 speak("Camera access denied")
-
 }
-
 }
 
 startCamera()
-
-function pauseCamera(){
-if(videoTrack) videoTrack.enabled=false
-}
-
-function resumeCamera(){
-if(videoTrack) videoTrack.enabled=true
-}
 
 /* FREEZE */
 
 function freezeFrame(){
 
-freezeCanvas.width=video.videoWidth
-freezeCanvas.height=video.videoHeight
+const rect=video.getBoundingClientRect()
 
-freezeCtx.drawImage(video,0,0)
+freezeCanvas.width=rect.width
+freezeCanvas.height=rect.height
+
+freezeCtx.filter=getComputedStyle(video).filter
+
+freezeCtx.drawImage(video,0,0,rect.width,rect.height)
 
 video.style.display="none"
 freezeCanvas.style.display="block"
 
 frozen=true
-freezeButton.classList.add("on")
 
+freezeButton.style.display="none"
 menuButton.style.display="none"
 infoButton.style.display="none"
 
@@ -482,7 +464,6 @@ video.style.display="block"
 freezeCanvas.style.display="none"
 
 frozen=false
-freezeButton.classList.remove("on")
 
 shareButton.style.display="none"
 
@@ -502,36 +483,21 @@ e.stopPropagation()
 speak("Share pressed")
 
 try{
-const dataUrl=freezeCanvas.toDataURL("image/png")
-const blob=await (await fetch(dataUrl)).blob()
-
+const blob=await (await fetch(freezeCanvas.toDataURL())).blob()
 const file=new File([blob],"image.png",{type:"image/png"})
-
-await navigator.share({
-files:[file],
-title:"Frozen image"
-})
-}catch(err){
-console.log("Share failed:",err)
-}
+await navigator.share({files:[file]})
+}catch{}
 }
 
 /* TORCH */
 
 function toggleTorch(){
 if(!videoTrack) return
-
 try{
 torchOn=!torchOn
-
-videoTrack.applyConstraints({
-advanced:[{torch:torchOn}]
-})
-
+videoTrack.applyConstraints({advanced:[{torch:torchOn}]})
 torchButton.classList.toggle("off",!torchOn)
-
 speak(torchOn?"Torch on":"Torch off")
-
 }catch{}
 }
 
@@ -544,7 +510,6 @@ toggleTorch()
 
 audioButton.onclick=(e)=>{
 e.stopPropagation()
-
 if(audioOn){
 speak("Audio off")
 audioOn=false
@@ -552,9 +517,7 @@ audioOn=false
 audioOn=true
 speak("Audio on")
 }
-
 audioButton.classList.toggle("off",!audioOn)
-
 save()
 }
 
@@ -564,23 +527,16 @@ const zoomValues=[100,115,130,150,175,200,230,260,300,340,380]
 const levels=document.getElementById("levels")
 
 function applyZoom(i){
-
 zoomLevel=i
-
 document.querySelectorAll(".level").forEach((el,index)=>{
 el.classList.toggle("active",index<=i)
 })
-
 video.style.transform=`scale(${zoomValues[i]/100})`
-
 }
 
 function setZoom(i){
-
 applyZoom(i)
-
 speak("Zoom "+i)
-
 save()
 }
 
@@ -597,16 +553,11 @@ applyZoom(zoomLevel)
 /* FILTERS */
 
 function applyFilters(){
-
 let contrastLevel=highContrast?3.2:1.35
-
 let filter=`contrast(${contrastLevel}) brightness(${dynamicBrightness})`
-
 if(mode==="invert") filter="invert(1) "+filter
 if(mode==="mono") filter="grayscale(1) "+filter
-
 video.style.filter=filter
-
 }
 
 modeSelect.onchange=()=>{
@@ -619,53 +570,35 @@ save()
 /* CONTRAST */
 
 contrastButton.onclick=(e)=>{
-
 e.stopPropagation()
-
 highContrast=!highContrast
-
 contrastButton.classList.toggle("high",highContrast)
-
 speak(highContrast?"High contrast on":"High contrast off")
-
 applyFilters()
 save()
-
 }
 
 /* BRIGHTNESS */
 
 const canvas=document.createElement("canvas")
 const ctx=canvas.getContext("2d")
-
 canvas.width=32
 canvas.height=32
 
 let lastBrightness=0
 
 function analyseBrightness(){
-
 if(video.readyState<2) return
-
 ctx.drawImage(video,0,0,32,32)
-
 let d=ctx.getImageData(0,0,32,32).data
-
 let total=0
-
 for(let i=0;i<d.length;i+=4)
 total+=(d[i]*0.2126+d[i+1]*0.7152+d[i+2]*0.0722)
-
 let avg=total/(d.length/4)
-
 if(Math.abs(avg-lastBrightness)<10) return
-
 lastBrightness=avg
-
 dynamicBrightness=avg<80?1.5:1.2
-
 applyFilters()
-
 }
 
 setInterval(analyseBrightness,3000)
@@ -673,88 +606,66 @@ setInterval(analyseBrightness,3000)
 /* OPTIONS */
 
 menuButton.onclick=(e)=>{
-
 e.stopPropagation()
-
 const open=menu.style.display==="block"
-
 if(open){
-
 menu.style.display="none"
 menuButton.textContent="OPTIONS"
-
 resumeCamera()
-
 menuButton.style.display="none"
 infoButton.style.display="none"
-
+freezeButton.style.display="none"
 speak("Resume camera view")
-
 }else{
-
 menu.style.display="block"
 menuButton.textContent="RESUME"
-
 infoButton.style.display="none"
-
+freezeButton.style.display="none"
 pauseCamera()
-
 speak("Options menu")
-
+}
 }
 
+function pauseCamera(){
+if(videoTrack) videoTrack.enabled=false
+}
+
+function resumeCamera(){
+if(videoTrack) videoTrack.enabled=true
 }
 
 /* INFO */
 
 infoButton.onclick=(e)=>{
-
 e.stopPropagation()
-
 const open=infoPanel.style.display==="block"
-
 if(open){
-
 infoPanel.style.display="none"
 infoButton.textContent="INFO"
-
 resumeCamera()
-
 menuButton.style.display="block"
-
+freezeButton.style.display="none"
 speak("Information closed")
-
 }else{
-
 infoPanel.style.display="block"
 infoButton.textContent="CLOSE"
-
 menuButton.style.display="none"
-
+freezeButton.style.display="none"
 pauseCamera()
-
 speak("Information open")
-
 }
-
 }
 
 /* RELOAD */
 
 reloadButton.onclick=(e)=>{
-
 e.stopPropagation()
-
 speak("Reloading app in three seconds")
-
 setTimeout(()=>{
-
 const url=new URL(window.location.href)
 url.searchParams.set("reload",Date.now())
 window.location.href=url.toString()
-
 },3000)
-
 }
 
 /* SHOW BUTTONS */
@@ -767,6 +678,7 @@ if(menu.style.display!=="block" && infoPanel.style.display!=="block"){
 
 menuButton.style.display="block"
 infoButton.style.display="block"
+freezeButton.style.display="block"
 
 }
 
