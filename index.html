@@ -44,7 +44,7 @@ height:100vh;
 object-fit:cover;
 }
 
-/* ✅ FREEZE CANVAS */
+/* FREEZE CANVAS */
 
 #freezeCanvas{
 position:absolute;
@@ -89,7 +89,7 @@ display:none;
 z-index:10;
 }
 
-/* ✅ FREEZE BUTTON */
+/* FREEZE BUTTON */
 
 #freezeButton{
 position:fixed;
@@ -109,6 +109,23 @@ z-index:10;
 #freezeButton.on{
 background:#ff2a2a;
 color:white;
+}
+
+/* SHARE BUTTON */
+
+#shareButton{
+position:fixed;
+bottom:4vh;
+left:3vw;
+padding:2vh 3vw;
+font-size:4vw;
+border-radius:1vw;
+border:none;
+background:#ff2a2a;
+color:white;
+font-weight:bold;
+display:none;
+z-index:10;
 }
 
 /* MENU PANEL */
@@ -287,6 +304,7 @@ font-weight:bold;
 <button id="menuButton">OPTIONS</button>
 <button id="infoButton">INFO</button>
 <button id="freezeButton">FREEZE</button>
+<button id="shareButton">SHARE</button>
 
 <div id="menu">
 
@@ -335,6 +353,8 @@ font-weight:bold;
 const video=document.getElementById("camera")
 const freezeCanvas=document.getElementById("freezeCanvas")
 const freezeCtx=freezeCanvas.getContext("2d")
+
+const shareButton=document.getElementById("shareButton")
 
 const menu=document.getElementById("menu")
 const menuButton=document.getElementById("menuButton")
@@ -433,7 +453,7 @@ function resumeCamera(){
 if(videoTrack) videoTrack.enabled=true
 }
 
-/* ✅ FREEZE */
+/* FREEZE */
 
 function freezeFrame(){
 
@@ -451,6 +471,8 @@ freezeButton.classList.add("on")
 menuButton.style.display="none"
 infoButton.style.display="none"
 
+shareButton.style.display="block"
+
 speak("Image frozen")
 }
 
@@ -462,12 +484,36 @@ freezeCanvas.style.display="none"
 frozen=false
 freezeButton.classList.remove("on")
 
+shareButton.style.display="none"
+
 speak("Image unfrozen")
 }
 
 freezeButton.onclick=(e)=>{
 e.stopPropagation()
 frozen?unfreezeFrame():freezeFrame()
+}
+
+/* SHARE */
+
+shareButton.onclick=async (e)=>{
+e.stopPropagation()
+
+speak("Share pressed")
+
+try{
+const dataUrl=freezeCanvas.toDataURL("image/png")
+const blob=await (await fetch(dataUrl)).blob()
+
+const file=new File([blob],"image.png",{type:"image/png"})
+
+await navigator.share({
+files:[file],
+title:"Frozen image"
+})
+}catch(err){
+console.log("Share failed:",err)
+}
 }
 
 /* TORCH */
