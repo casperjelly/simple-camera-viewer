@@ -44,6 +44,17 @@ height:100vh;
 object-fit:cover;
 }
 
+/* ✅ FREEZE CANVAS */
+
+#freezeCanvas{
+position:absolute;
+top:0;
+left:0;
+width:100vw;
+height:100vh;
+display:none;
+}
+
 /* OPTIONS */
 
 #menuButton{
@@ -76,6 +87,28 @@ color:white;
 font-weight:bold;
 display:none;
 z-index:10;
+}
+
+/* ✅ FREEZE BUTTON */
+
+#freezeButton{
+position:fixed;
+bottom:4vh;
+right:3vw;
+padding:2vh 3vw;
+font-size:4vw;
+border-radius:1vw;
+border:none;
+background:#5a0000;
+color:#bbb;
+font-weight:bold;
+display:none;
+z-index:10;
+}
+
+#freezeButton.on{
+background:#ff2a2a;
+color:white;
 }
 
 /* MENU PANEL */
@@ -248,10 +281,12 @@ font-weight:bold;
 
 <div id="view">
 <video id="camera" autoplay playsinline></video>
+<canvas id="freezeCanvas"></canvas>
 </div>
 
 <button id="menuButton">OPTIONS</button>
 <button id="infoButton">INFO</button>
+<button id="freezeButton">FREEZE</button>
 
 <div id="menu">
 
@@ -298,6 +333,9 @@ font-weight:bold;
 <script>
 
 const video=document.getElementById("camera")
+const freezeCanvas=document.getElementById("freezeCanvas")
+const freezeCtx=freezeCanvas.getContext("2d")
+
 const menu=document.getElementById("menu")
 const menuButton=document.getElementById("menuButton")
 const infoButton=document.getElementById("infoButton")
@@ -309,10 +347,12 @@ const contrastButton=document.getElementById("contrastButton")
 
 const audioButton=document.getElementById("audioButton")
 const torchButton=document.getElementById("torchButton")
+const freezeButton=document.getElementById("freezeButton")
 
 let videoTrack=null
 let torchOn=false
 let audioOn=true
+let frozen=false
 
 let mode="normal"
 let highContrast=false
@@ -363,6 +403,8 @@ audio:false
 video.srcObject=stream
 videoTrack=stream.getVideoTracks()[0]
 
+freezeButton.style.display="block"
+
 try{
 videoTrack.applyConstraints({advanced:[{torch:false}]})
 }catch{}
@@ -389,6 +431,43 @@ if(videoTrack) videoTrack.enabled=false
 
 function resumeCamera(){
 if(videoTrack) videoTrack.enabled=true
+}
+
+/* ✅ FREEZE */
+
+function freezeFrame(){
+
+freezeCanvas.width=video.videoWidth
+freezeCanvas.height=video.videoHeight
+
+freezeCtx.drawImage(video,0,0)
+
+video.style.display="none"
+freezeCanvas.style.display="block"
+
+frozen=true
+freezeButton.classList.add("on")
+
+menuButton.style.display="none"
+infoButton.style.display="none"
+
+speak("Image frozen")
+}
+
+function unfreezeFrame(){
+
+video.style.display="block"
+freezeCanvas.style.display="none"
+
+frozen=false
+freezeButton.classList.remove("on")
+
+speak("Image unfrozen")
+}
+
+freezeButton.onclick=(e)=>{
+e.stopPropagation()
+frozen?unfreezeFrame():freezeFrame()
 }
 
 /* TORCH */
@@ -635,6 +714,8 @@ window.location.href=url.toString()
 /* SHOW BUTTONS */
 
 document.body.addEventListener("click",()=>{
+
+if(frozen) return
 
 if(menu.style.display!=="block" && infoPanel.style.display!=="block"){
 
