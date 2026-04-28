@@ -435,21 +435,64 @@ startCamera()
 
 function freezeFrame(){
 
-const rect=video.getBoundingClientRect()
+const rect = video.getBoundingClientRect()
 
-freezeCanvas.width=rect.width
-freezeCanvas.height=rect.height
+const dpr = window.devicePixelRatio || 1
 
-freezeCtx.filter=getComputedStyle(video).filter
+freezeCanvas.width = rect.width * dpr
+freezeCanvas.height = rect.height * dpr
 
-freezeCtx.drawImage(video,0,0,rect.width,rect.height)
+// Reset and scale context so drawing uses CSS pixel coords
+freezeCtx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+freezeCtx.filter = getComputedStyle(video).filter
+
+const scale = zoomValues[zoomLevel] / 100
+
+const sw = video.videoWidth
+const sh = video.videoHeight
+
+const dw = rect.width
+const dh = rect.height
+
+// --- STEP 1: object-fit: cover crop ---
+
+const videoAspect = sw / sh
+const viewAspect = dw / dh
+
+let baseW, baseH
+
+if (videoAspect > viewAspect) {
+  // video too wide → crop sides
+  baseH = sh
+  baseW = sh * viewAspect
+} else {
+  // video too tall → crop top/bottom
+  baseW = sw
+  baseH = sw / viewAspect
+}
+
+// --- STEP 2: apply zoom on top of that ---
+
+const cropW = baseW / scale
+const cropH = baseH / scale
+
+const sx = (sw - cropW) / 2
+const sy = (sh - cropH) / 2
+
+freezeCtx.drawImage(
+  video,
+  sx, sy, cropW, cropH,
+  0, 0, dw, dh
+)
 
 video.style.display="none"
 freezeCanvas.style.display="block"
 
 frozen=true
 
-freezeButton.style.display="none"
+freezeButton.classList.add("on")
+freezeButton.textContent = "UNFREEZE"
 menuButton.style.display="none"
 infoButton.style.display="none"
 
@@ -465,6 +508,9 @@ freezeCanvas.style.display="none"
 
 frozen=false
 
+freezeButton.classList.remove("on")
+freezeButton.textContent = "FREEZE"
+freezeButton.style.display="none"
 shareButton.style.display="none"
 
 speak("Image unfrozen")
@@ -642,8 +688,9 @@ const open=infoPanel.style.display==="block"
 if(open){
 infoPanel.style.display="none"
 infoButton.textContent="INFO"
+infoButton.style.display="none"
 resumeCamera()
-menuButton.style.display="block"
+menuButton.style.display="none"
 freezeButton.style.display="none"
 speak("Information closed")
 }else{
