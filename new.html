@@ -512,6 +512,14 @@ data[i+2]=clampColor(b*dynamicBrightness)
 freezeCtx.putImageData(image,0,0)
 }
 
+function drawCroppedVideo(sourceX,sourceY,cropWidth,cropHeight,viewWidth,viewHeight){
+freezeCtx.drawImage(
+video,
+sourceX,sourceY,cropWidth,cropHeight,
+0,0,viewWidth,viewHeight
+)
+}
+
 function drawCurrentViewToFreezeCanvas(){
 if(video.readyState<2 || !video.videoWidth || !video.videoHeight) return false
 
@@ -542,13 +550,15 @@ const sourceY=(sourceHeight-cropHeight)/2
 
 prepareFreezeCanvas(viewWidth,viewHeight)
 
-freezeCtx.drawImage(
-video,
-sourceX,sourceY,cropWidth,cropHeight,
-0,0,viewWidth,viewHeight
-)
-
+if("filter" in freezeCtx){
+freezeCtx.save()
+freezeCtx.filter=getComputedStyle(video).filter
+drawCroppedVideo(sourceX,sourceY,cropWidth,cropHeight,viewWidth,viewHeight)
+freezeCtx.restore()
+}else{
+drawCroppedVideo(sourceX,sourceY,cropWidth,cropHeight,viewWidth,viewHeight)
 processFrozenPixels()
+}
 
 return true
 }
