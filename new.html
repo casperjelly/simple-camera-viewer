@@ -44,6 +44,17 @@ height:100vh;
 object-fit:cover;
 }
 
+/* FREEZE CANVAS */
+
+#freezeCanvas{
+position:absolute;
+top:0;
+left:0;
+width:100vw;
+height:100vh;
+display:none;
+}
+
 /* OPTIONS */
 
 #menuButton{
@@ -72,6 +83,45 @@ font-size:4vw;
 border-radius:1vw;
 border:none;
 background:#444;
+color:white;
+font-weight:bold;
+display:none;
+z-index:10;
+}
+
+/* FREEZE BUTTON */
+
+#freezeButton{
+position:fixed;
+bottom:4vh;
+right:3vw;
+padding:2vh 3vw;
+font-size:4vw;
+border-radius:1vw;
+border:none;
+background:#5a0000;
+color:#bbb;
+font-weight:bold;
+display:none;
+z-index:10;
+}
+
+#freezeButton.on{
+background:#ff2a2a;
+color:white;
+}
+
+/* SHARE BUTTON */
+
+#shareButton{
+position:fixed;
+bottom:4vh;
+left:3vw;
+padding:2vh 3vw;
+font-size:4vw;
+border-radius:1vw;
+border:none;
+background:#ff2a2a;
 color:white;
 font-weight:bold;
 display:none;
@@ -248,10 +298,13 @@ font-weight:bold;
 
 <div id="view">
 <video id="camera" autoplay playsinline></video>
+<canvas id="freezeCanvas"></canvas>
 </div>
 
 <button id="menuButton">OPTIONS</button>
 <button id="infoButton">INFO</button>
+<button id="freezeButton">FREEZE</button>
+<button id="shareButton">SHARE</button>
 
 <div id="menu">
 
@@ -298,6 +351,9 @@ font-weight:bold;
 <script>
 
 const video=document.getElementById("camera")
+const freezeCanvas=document.getElementById("freezeCanvas")
+const freezeCtx=freezeCanvas.getContext("2d")
+
 const menu=document.getElementById("menu")
 const menuButton=document.getElementById("menuButton")
 const infoButton=document.getElementById("infoButton")
@@ -309,10 +365,13 @@ const contrastButton=document.getElementById("contrastButton")
 
 const audioButton=document.getElementById("audioButton")
 const torchButton=document.getElementById("torchButton")
+const freezeButton=document.getElementById("freezeButton")
+const shareButton=document.getElementById("shareButton")
 
 let videoTrack=null
 let torchOn=false
 let audioOn=true
+let frozen=false
 
 let mode="normal"
 let highContrast=false
@@ -346,22 +405,18 @@ speechSynthesis.speak(msg)
 /* CAMERA */
 
 async function startCamera(){
-
 try{
-
 const stream=await navigator.mediaDevices.getUserMedia({
-
 video:{
 facingMode:{ ideal:"environment" },
 frameRate:{ ideal:24,max:24 }
 },
-
 audio:false
-
 })
-
 video.srcObject=stream
 videoTrack=stream.getVideoTracks()[0]
+
+freezeButton.style.display="none"
 
 try{
 videoTrack.applyConstraints({advanced:[{torch:false}]})
@@ -369,44 +424,126 @@ videoTrack.applyConstraints({advanced:[{torch:false}]})
 
 speak("Camera ready")
 
-videoTrack.addEventListener("ended",()=>{
-speak("Camera stopped. Please reopen the app.")
-})
-
 }catch{
-
 speak("Camera access denied")
-
 }
-
 }
 
 startCamera()
 
-function pauseCamera(){
-if(videoTrack) videoTrack.enabled=false
+/* FREEZE */
+
+function freezeFrame(){
+
+const rect = video.getBoundingClientRect()
+
+const dpr = window.devicePixelRatio || 1
+
+freezeCanvas.width = rect.width * dpr
+freezeCanvas.height = rect.height * dpr
+
+// Reset and scale context so drawing uses CSS pixel coords
+freezeCtx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+freezeCtx.filter = getComputedStyle(video).filter
+
+const scale = zoomValues[zoomLevel] / 100
+
+const sw = video.videoWidth
+const sh = video.videoHeight
+
+const dw = rect.width
+const dh = rect.height
+
+// --- STEP 1: object-fit: cover crop ---
+
+const videoAspect = sw / sh
+const viewAspect = dw / dh
+
+let baseW, baseH
+
+if (videoAspect > viewAspect) {
+  // video too wide → crop sides
+  baseH = sh
+  baseW = sh * viewAspect
+} else {
+  // video too tall → crop top/bottom
+  baseW = sw
+  baseH = sw / viewAspect
 }
 
-function resumeCamera(){
-if(videoTrack) videoTrack.enabled=true
+// --- STEP 2: apply zoom on top of that ---
+
+const cropW = baseW / scale
+const cropH = baseH / scale
+
+const sx = (sw - cropW) / 2
+const sy = (sh - cropH) / 2
+
+freezeCtx.drawImage(
+  video,
+  sx, sy, cropW, cropH,
+  0, 0, dw, dh
+)
+
+video.style.display="none"
+freezeCanvas.style.display="block"
+
+frozen=true
+
+freezeButton.classList.add("on")
+freezeButton.textContent = "UNFREEZE"
+menuButton.style.display="none"
+infoButton.style.display="none"
+
+shareButton.style.display="block"
+
+speak("Image frozen")
+}
+
+function unfreezeFrame(){
+
+video.style.display="block"
+freezeCanvas.style.display="none"
+
+frozen=false
+
+freezeButton.classList.remove("on")
+freezeButton.textContent = "FREEZE"
+freezeButton.style.display="none"
+shareButton.style.display="none"
+
+speak("Image unfrozen")
+}
+
+freezeButton.onclick=(e)=>{
+e.stopPropagation()
+frozen?unfreezeFrame():freezeFrame()
+}
+
+/* SHARE */
+
+shareButton.onclick=async (e)=>{
+e.stopPropagation()
+
+speak("Share pressed")
+
+try{
+const blob=await (await fetch(freezeCanvas.toDataURL())).blob()
+const file=new File([blob],"image.png",{type:"image/png"})
+await navigator.share({files:[file]})
+}catch{}
 }
 
 /* TORCH */
 
 function toggleTorch(){
 if(!videoTrack) return
-
 try{
 torchOn=!torchOn
-
-videoTrack.applyConstraints({
-advanced:[{torch:torchOn}]
-})
-
+videoTrack.applyConstraints({advanced:[{torch:torchOn}]})
 torchButton.classList.toggle("off",!torchOn)
-
 speak(torchOn?"Torch on":"Torch off")
-
 }catch{}
 }
 
@@ -419,7 +556,6 @@ toggleTorch()
 
 audioButton.onclick=(e)=>{
 e.stopPropagation()
-
 if(audioOn){
 speak("Audio off")
 audioOn=false
@@ -427,9 +563,7 @@ audioOn=false
 audioOn=true
 speak("Audio on")
 }
-
 audioButton.classList.toggle("off",!audioOn)
-
 save()
 }
 
@@ -439,23 +573,16 @@ const zoomValues=[100,115,130,150,175,200,230,260,300,340,380]
 const levels=document.getElementById("levels")
 
 function applyZoom(i){
-
 zoomLevel=i
-
 document.querySelectorAll(".level").forEach((el,index)=>{
 el.classList.toggle("active",index<=i)
 })
-
 video.style.transform=`scale(${zoomValues[i]/100})`
-
 }
 
 function setZoom(i){
-
 applyZoom(i)
-
 speak("Zoom "+i)
-
 save()
 }
 
@@ -472,16 +599,11 @@ applyZoom(zoomLevel)
 /* FILTERS */
 
 function applyFilters(){
-
 let contrastLevel=highContrast?3.2:1.35
-
 let filter=`contrast(${contrastLevel}) brightness(${dynamicBrightness})`
-
 if(mode==="invert") filter="invert(1) "+filter
 if(mode==="mono") filter="grayscale(1) "+filter
-
 video.style.filter=filter
-
 }
 
 modeSelect.onchange=()=>{
@@ -494,53 +616,35 @@ save()
 /* CONTRAST */
 
 contrastButton.onclick=(e)=>{
-
 e.stopPropagation()
-
 highContrast=!highContrast
-
 contrastButton.classList.toggle("high",highContrast)
-
 speak(highContrast?"High contrast on":"High contrast off")
-
 applyFilters()
 save()
-
 }
 
 /* BRIGHTNESS */
 
 const canvas=document.createElement("canvas")
 const ctx=canvas.getContext("2d")
-
 canvas.width=32
 canvas.height=32
 
 let lastBrightness=0
 
 function analyseBrightness(){
-
 if(video.readyState<2) return
-
 ctx.drawImage(video,0,0,32,32)
-
 let d=ctx.getImageData(0,0,32,32).data
-
 let total=0
-
 for(let i=0;i<d.length;i+=4)
 total+=(d[i]*0.2126+d[i+1]*0.7152+d[i+2]*0.0722)
-
 let avg=total/(d.length/4)
-
 if(Math.abs(avg-lastBrightness)<10) return
-
 lastBrightness=avg
-
 dynamicBrightness=avg<80?1.5:1.2
-
 applyFilters()
-
 }
 
 setInterval(analyseBrightness,3000)
@@ -548,98 +652,80 @@ setInterval(analyseBrightness,3000)
 /* OPTIONS */
 
 menuButton.onclick=(e)=>{
-
 e.stopPropagation()
-
 const open=menu.style.display==="block"
-
 if(open){
-
 menu.style.display="none"
 menuButton.textContent="OPTIONS"
-
 resumeCamera()
-
 menuButton.style.display="none"
 infoButton.style.display="none"
-
+freezeButton.style.display="none"
 speak("Resume camera view")
-
 }else{
-
 menu.style.display="block"
 menuButton.textContent="RESUME"
-
 infoButton.style.display="none"
-
+freezeButton.style.display="none"
 pauseCamera()
-
 speak("Options menu")
-
+}
 }
 
+function pauseCamera(){
+if(videoTrack) videoTrack.enabled=false
+}
+
+function resumeCamera(){
+if(videoTrack) videoTrack.enabled=true
 }
 
 /* INFO */
 
 infoButton.onclick=(e)=>{
-
 e.stopPropagation()
-
 const open=infoPanel.style.display==="block"
-
 if(open){
-
 infoPanel.style.display="none"
 infoButton.textContent="INFO"
-
+infoButton.style.display="none"
 resumeCamera()
-
-menuButton.style.display="block"
-
+menuButton.style.display="none"
+freezeButton.style.display="none"
 speak("Information closed")
-
 }else{
-
 infoPanel.style.display="block"
 infoButton.textContent="CLOSE"
-
 menuButton.style.display="none"
-
+freezeButton.style.display="none"
 pauseCamera()
-
 speak("Information open")
-
 }
-
 }
 
 /* RELOAD */
 
 reloadButton.onclick=(e)=>{
-
 e.stopPropagation()
-
 speak("Reloading app in three seconds")
-
 setTimeout(()=>{
-
 const url=new URL(window.location.href)
 url.searchParams.set("reload",Date.now())
 window.location.href=url.toString()
-
 },3000)
-
 }
 
 /* SHOW BUTTONS */
 
 document.body.addEventListener("click",()=>{
 
+if(frozen) return
+
 if(menu.style.display!=="block" && infoPanel.style.display!=="block"){
 
 menuButton.style.display="block"
 infoButton.style.display="block"
+freezeButton.style.display="block"
 
 }
 
