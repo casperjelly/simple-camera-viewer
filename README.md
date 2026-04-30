@@ -6,7 +6,7 @@ Visual Viewer is a lightweight web-based accessibility tool designed to assist u
 
 The viewer runs entirely in the web browser and can be installed to the device Home Screen, allowing it to behave like a simple standalone app.
 
-It provides magnification, colour filtering and contrast enhancement in real time.
+It provides magnification, colour filtering, contrast enhancement, and an optional freeze/share workflow.
 
 ---
 
@@ -21,8 +21,26 @@ Features:
 - Automatic rear camera selection
 - 24fps capture for improved battery life
 - Full screen display
-- No recording or storage of images
+- No recording of video
+- Frozen images are temporary unless the user explicitly shares them
 - Optional torch (flashlight) support on compatible devices
+
+---
+
+## Freeze and Share
+
+The viewer can freeze the current enhanced view so it can be inspected without holding the camera steady.
+
+The frozen image is designed to match the live on-screen view, including:
+
+- current zoom level
+- display mode
+- contrast setting
+- adaptive brightness
+
+While frozen, the live camera is paused and a **Share** button appears.
+
+Sharing uses the browser/device share sheet when supported. Images are not automatically uploaded or saved by the app.
 
 ---
 
@@ -98,6 +116,9 @@ Examples include:
 - Mode changes
 - Contrast toggle
 - Torch toggle
+- Image frozen
+- Image unfrozen
+- Share pressed
 - Reload countdown
 - Camera stopped
 
@@ -113,6 +134,9 @@ A tap reveals:
 
 - OPTIONS button
 - INFO button
+- FREEZE button
+
+The SHARE button appears only after the view has been frozen.
 
 ---
 
@@ -162,7 +186,7 @@ The viewer includes optimisations to reduce heat and battery usage:
 - GPU-accelerated visual filters
 - low-resolution brightness sampling
 - reduced brightness analysis frequency
-- camera paused while menus are open
+- camera paused while menus, information, or a frozen image are open
 
 ---
 
@@ -178,6 +202,9 @@ Design principles include:
 - minimal interface clutter
 - audible feedback
 - simplified toggle-based controls (no fine sliders)
+- bright controls in both on and off states
+- strong white ring to indicate enabled toggle states
+- heavy button shadows to improve visibility over the camera image
 
 ---
 
