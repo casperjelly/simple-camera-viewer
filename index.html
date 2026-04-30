@@ -42,6 +42,34 @@ left:0;
 width:100vw;
 height:100vh;
 object-fit:cover;
+transform-origin:center center;
+}
+
+/* FREEZE CANVAS */
+
+#freezeCanvas{
+position:absolute;
+top:0;
+left:0;
+width:100vw;
+height:100vh;
+display:none;
+}
+
+/* SHARED BUTTON EFFECTS */
+
+button,
+select,
+.level{
+box-shadow:0 0.7vh 1.8vh rgba(0,0,0,0.95),0 0 0 0.45vw rgba(0,0,0,0.7);
+text-shadow:0 0.25vh 0.45vh rgba(0,0,0,0.9);
+}
+
+#audioButton:not(.off),
+#torchButton:not(.off),
+#contrastButton.high,
+#freezeButton.on{
+box-shadow:inset 0 0 0 1.1vw white,0 0.7vh 1.8vh rgba(0,0,0,0.95),0 0 1vw white;
 }
 
 /* OPTIONS */
@@ -72,6 +100,40 @@ font-size:4vw;
 border-radius:1vw;
 border:none;
 background:#444;
+color:white;
+font-weight:bold;
+display:none;
+z-index:10;
+}
+
+/* FREEZE BUTTON */
+
+#freezeButton{
+position:fixed;
+bottom:4vh;
+right:3vw;
+padding:2vh 3vw;
+font-size:4vw;
+border-radius:1vw;
+border:none;
+background:#ff2a2a;
+color:white;
+font-weight:bold;
+display:none;
+z-index:10;
+}
+
+/* SHARE BUTTON */
+
+#shareButton{
+position:fixed;
+bottom:4vh;
+left:3vw;
+padding:2vh 3vw;
+font-size:4vw;
+border-radius:1vw;
+border:none;
+background:#2c7be5;
 color:white;
 font-weight:bold;
 display:none;
@@ -136,8 +198,8 @@ font-weight:bold;
 }
 
 #audioButton.off{
-background:#6a1b3a;
-color:#bbb;
+background:#c2185b;
+color:white;
 }
 
 /* TORCH */
@@ -157,8 +219,8 @@ font-weight:bold;
 }
 
 #torchButton.off{
-background:#7a4f00;
-color:#bbb;
+background:#ff8f00;
+color:white;
 }
 
 /* ZOOM */
@@ -216,8 +278,8 @@ padding:2vh 3vw;
 font-size:4vw;
 border-radius:1vw;
 border:none;
-background:#3e1c73;
-color:#bbb;
+background:#7a3fd1;
+color:white;
 font-weight:bold;
 }
 
@@ -248,10 +310,13 @@ font-weight:bold;
 
 <div id="view">
 <video id="camera" autoplay playsinline></video>
+<canvas id="freezeCanvas"></canvas>
 </div>
 
 <button id="menuButton">OPTIONS</button>
 <button id="infoButton">INFO</button>
+<button id="freezeButton">FREEZE</button>
+<button id="shareButton">SHARE</button>
 
 <div id="menu">
 
@@ -298,6 +363,8 @@ font-weight:bold;
 <script>
 
 const video=document.getElementById("camera")
+const freezeCanvas=document.getElementById("freezeCanvas")
+const freezeCtx=freezeCanvas.getContext("2d")
 const menu=document.getElementById("menu")
 const menuButton=document.getElementById("menuButton")
 const infoButton=document.getElementById("infoButton")
@@ -309,10 +376,13 @@ const contrastButton=document.getElementById("contrastButton")
 
 const audioButton=document.getElementById("audioButton")
 const torchButton=document.getElementById("torchButton")
+const freezeButton=document.getElementById("freezeButton")
+const shareButton=document.getElementById("shareButton")
 
 let videoTrack=null
 let torchOn=false
 let audioOn=true
+let frozen=false
 
 let mode="normal"
 let highContrast=false
@@ -328,6 +398,7 @@ if(saved.zoomLevel!==undefined) zoomLevel=saved.zoomLevel
 
 modeSelect.value=mode
 audioButton.classList.toggle("off",!audioOn)
+contrastButton.classList.toggle("high",highContrast)
 
 function save(){
 localStorage.setItem("viewerSettings",JSON.stringify({
@@ -389,6 +460,166 @@ if(videoTrack) videoTrack.enabled=false
 
 function resumeCamera(){
 if(videoTrack) videoTrack.enabled=true
+}
+
+/* FREEZE */
+
+function prepareFreezeCanvas(width,height){
+const dpr=window.devicePixelRatio||1
+
+freezeCanvas.width=Math.round(width*dpr)
+freezeCanvas.height=Math.round(height*dpr)
+freezeCtx.setTransform(dpr,0,0,dpr,0,0)
+freezeCtx.clearRect(0,0,width,height)
+}
+
+function clampColor(value){
+return Math.max(0,Math.min(255,value))
+}
+
+function processFrozenPixels(){
+const image=freezeCtx.getImageData(0,0,freezeCanvas.width,freezeCanvas.height)
+const data=image.data
+const contrastLevel=highContrast?3.2:1.35
+
+for(let i=0;i<data.length;i+=4){
+let r=data[i]
+let g=data[i+1]
+let b=data[i+2]
+
+if(mode==="invert"){
+r=255-r
+g=255-g
+b=255-b
+}
+
+if(mode==="mono"){
+const gray=r*0.2126+g*0.7152+b*0.0722
+r=gray
+g=gray
+b=gray
+}
+
+r=(r-128)*contrastLevel+128
+g=(g-128)*contrastLevel+128
+b=(b-128)*contrastLevel+128
+
+data[i]=clampColor(r*dynamicBrightness)
+data[i+1]=clampColor(g*dynamicBrightness)
+data[i+2]=clampColor(b*dynamicBrightness)
+}
+
+freezeCtx.putImageData(image,0,0)
+}
+
+function drawCurrentViewToFreezeCanvas(){
+if(video.readyState<2 || !video.videoWidth || !video.videoHeight) return false
+
+const rect=video.getBoundingClientRect()
+const viewWidth=rect.width
+const viewHeight=rect.height
+const sourceWidth=video.videoWidth
+const sourceHeight=video.videoHeight
+const viewAspect=viewWidth/viewHeight
+const sourceAspect=sourceWidth/sourceHeight
+const zoom=zoomValues[zoomLevel]/100
+
+let fittedWidth
+let fittedHeight
+
+if(sourceAspect>viewAspect){
+fittedHeight=sourceHeight
+fittedWidth=sourceHeight*viewAspect
+}else{
+fittedWidth=sourceWidth
+fittedHeight=sourceWidth/viewAspect
+}
+
+const cropWidth=fittedWidth/zoom
+const cropHeight=fittedHeight/zoom
+const sourceX=(sourceWidth-cropWidth)/2
+const sourceY=(sourceHeight-cropHeight)/2
+
+prepareFreezeCanvas(viewWidth,viewHeight)
+
+freezeCtx.drawImage(
+video,
+sourceX,sourceY,cropWidth,cropHeight,
+0,0,viewWidth,viewHeight
+)
+
+processFrozenPixels()
+
+return true
+}
+
+function showFrozenControls(){
+freezeButton.classList.add("on")
+freezeButton.style.display="block"
+shareButton.style.display="block"
+menuButton.style.display="none"
+infoButton.style.display="none"
+}
+
+function hideFrozenControls(){
+freezeButton.classList.remove("on")
+freezeButton.style.display="none"
+shareButton.style.display="none"
+}
+
+function freezeFrame(){
+if(!drawCurrentViewToFreezeCanvas()) return
+
+video.style.display="none"
+freezeCanvas.style.display="block"
+pauseCamera()
+
+frozen=true
+
+showFrozenControls()
+
+speak("Image frozen")
+}
+
+function unfreezeFrame(){
+resumeCamera()
+
+video.style.display="block"
+freezeCanvas.style.display="none"
+
+frozen=false
+
+hideFrozenControls()
+
+speak("Image unfrozen")
+}
+
+freezeButton.onclick=(e)=>{
+e.stopPropagation()
+
+if(frozen){
+unfreezeFrame()
+}else{
+freezeFrame()
+}
+}
+
+shareButton.onclick=(e)=>{
+e.stopPropagation()
+
+freezeCanvas.toBlob(async (blob)=>{
+if(!blob) return
+
+const file=new File([blob],"visual-viewer-freeze.png",{type:"image/png"})
+
+try{
+if(navigator.canShare && navigator.canShare({files:[file]})){
+await navigator.share({files:[file],title:"Visual Viewer freeze"})
+}else if(navigator.share){
+await navigator.share({title:"Visual Viewer freeze"})
+}
+}catch{}
+},"image/png")
 }
 
 /* TORCH */
@@ -484,6 +715,8 @@ video.style.filter=filter
 
 }
 
+applyFilters()
+
 modeSelect.onchange=()=>{
 mode=modeSelect.value
 speak(modeSelect.options[modeSelect.selectedIndex].text+" mode")
@@ -562,6 +795,7 @@ resumeCamera()
 
 menuButton.style.display="none"
 infoButton.style.display="none"
+freezeButton.style.display="none"
 
 speak("Resume camera view")
 
@@ -571,6 +805,7 @@ menu.style.display="block"
 menuButton.textContent="RESUME"
 
 infoButton.style.display="none"
+freezeButton.style.display="none"
 
 pauseCamera()
 
@@ -596,6 +831,7 @@ infoButton.textContent="INFO"
 resumeCamera()
 
 menuButton.style.display="block"
+freezeButton.style.display="block"
 
 speak("Information closed")
 
@@ -605,6 +841,7 @@ infoPanel.style.display="block"
 infoButton.textContent="CLOSE"
 
 menuButton.style.display="none"
+freezeButton.style.display="none"
 
 pauseCamera()
 
@@ -636,10 +873,13 @@ window.location.href=url.toString()
 
 document.body.addEventListener("click",()=>{
 
+if(frozen) return
+
 if(menu.style.display!=="block" && infoPanel.style.display!=="block"){
 
 menuButton.style.display="block"
 infoButton.style.display="block"
+freezeButton.style.display="block"
 
 }
 
