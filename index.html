@@ -5,6 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 
+<!-- Favicon (desktop + general use) -->
+<link rel="icon" href="icon.png">
+
+<!-- iOS Home Screen icon -->
+<link rel="apple-touch-icon" href="icon.png">
+
+<!-- App name on iOS Home Screen -->
+<meta name="apple-mobile-web-app-title" content="Simple Camera Viewer">
+
+<!-- Enable standalone (full-screen) mode -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+<!-- Better for camera apps: immersive status bar -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- Browser UI colour -->
+<meta name="theme-color" content="#000000">
+
 <style>
 
 *{
@@ -340,7 +358,7 @@ font-weight:bold;
 <div id="infoContent">
 <div id="infoText">
 
-<p><b>VISUAL VIEWER</b></p>
+<p><b>Simple Camera Viewer</b></p>
 
 <p>This viewer uses your device camera to enlarge and enhance the live view in front of you.</p>
 
@@ -348,7 +366,7 @@ font-weight:bold;
 
 <br>
 
-<p><b>IMPORTANT</b></p>
+<p><b>Important</b></p>
 
 <p>This viewer is intended only as a visual enhancement aid.</p>
 
@@ -610,13 +628,13 @@ e.stopPropagation()
 freezeCanvas.toBlob(async (blob)=>{
 if(!blob) return
 
-const file=new File([blob],"visual-viewer-freeze.png",{type:"image/png"})
+const file=new File([blob],"simple-camera-viewer-freeze.png",{type:"image/png"})
 
 try{
 if(navigator.canShare && navigator.canShare({files:[file]})){
-await navigator.share({files:[file],title:"Visual Viewer freeze"})
+await navigator.share({files:[file],title:"Simple Camera Viewer freeze"})
 }else if(navigator.share){
-await navigator.share({title:"Visual Viewer freeze"})
+await navigator.share({title:"Simple Camera Viewer freeze"})
 }
 }catch{}
 },"image/png")

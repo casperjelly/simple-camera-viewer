@@ -1,0 +1,35 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+
+  <defs>
+    <!-- Balanced, perceptually even rainbow -->
+    <linearGradient id="rainbow" x1="0" y1="0" x2="1" y2="1">
+
+      <!-- Even spectral progression -->
+      <stop offset="0%" stop-color="#ff2d2d"></stop>   <!-- red -->
+      <stop offset="16%" stop-color="#ff7a1a"></stop>  <!-- orange -->
+      <stop offset="33%" stop-color="#ffd400"></stop>  <!-- yellow -->
+      <stop offset="50%" stop-color="#3dff6b"></stop>  <!-- green -->
+      <stop offset="66%" stop-color="#2da1ff"></stop>  <!-- blue -->
+      <stop offset="83%" stop-color="#6a3dff"></stop>  <!-- indigo -->
+      <stop offset="100%" stop-color="#ff3dd6"></stop> <!-- violet -->
+
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="110" fill="#000000"></rect>
+
+  <!-- Subtle rainbow presence (kept controlled, not overpowering) -->
+  <ellipse cx="256" cy="256" rx="220" ry="145" fill="url(#rainbow)" opacity="0.58"></ellipse>
+  <ellipse cx="256" cy="256" rx="235" ry="155" fill="url(#rainbow)" opacity="0.20"></ellipse>
+
+  <!-- Main eye (dominant white structure) -->
+  <ellipse cx="256" cy="256" rx="200" ry="130" fill="#ffffff"></ellipse>
+
+  <!-- Iris -->
+  <circle cx="256" cy="256" r="85" fill="#000000"></circle>
+
+  <!-- Highlight (perception cue) -->
+  <circle cx="228" cy="228" r="18" fill="#ffffff"></circle>
+
+</svg>
