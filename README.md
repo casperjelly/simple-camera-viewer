@@ -1,8 +1,8 @@
-# Visual Viewer (Web Camera Accessibility Tool)
+# Simple Camera Viewer (Web Camera Accessibility Tool)
 
 ## Overview
 
-Visual Viewer is a lightweight web-based accessibility tool designed to assist users with reduced vision by enhancing the live camera image from a smartphone.
+Simple Camera Viewer is a lightweight web-based accessibility tool designed to assist users with reduced vision by enhancing the live camera image from a smartphone.
 
 The viewer runs entirely in the web browser and can be installed to the device Home Screen, allowing it to behave like a simple standalone app.
 
