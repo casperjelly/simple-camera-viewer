@@ -1,0 +1,16 @@
+{
+  "name": "simple-camera-viewer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A lightweight static web camera accessibility viewer.",
+  "scripts": {
+    "format": "prettier --write .",
+    "check:format": "prettier --check .",
+    "lint": "eslint src/app.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.26.0",
+    "eslint": "^9.26.0",
+    "prettier": "^3.5.3"
+  }
+}

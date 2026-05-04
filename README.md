@@ -14,12 +14,12 @@ It provides magnification, colour filtering, contrast enhancement, and an option
 
 ## Camera Viewer
 
-Uses the device rear camera to display a full-screen live view.
+Requests the device rear camera and displays a full-screen live view.
 
 Features:
 
-- Automatic rear camera selection
-- 24fps capture for improved battery life
+- Rear camera selection where supported by the browser/device
+- 24fps requested capture for improved battery life
 - Full screen display
 - No recording of video
 - Frozen images are temporary unless the user explicitly shares them
@@ -64,26 +64,31 @@ Audio confirmation is provided, for example:
 
 Three viewing modes are available via dropdown.
 
-| Mode | Description |
-|-----|-------------|
+| Mode    | Description        |
+| ------- | ------------------ |
 | Default | Normal camera view |
-| Invert | Colour inversion |
-| Mono | Grayscale view |
+| Invert  | Colour inversion   |
+| Mono    | Grayscale view     |
 
 Each mode provides spoken feedback when selected.
 
 ---
 
-## Contrast Enhancement
+## Contrast and Brightness
 
-A **Contrast** toggle boosts contrast dramatically to improve visibility of:
+The viewer applies a modest baseline contrast and brightness boost even in
+Default mode, so the normal live view is still slightly enhanced rather than a
+completely raw camera feed.
+
+The **Contrast** toggle adds a much stronger contrast boost to improve
+visibility of:
 
 - text
 - signage
 - edges
 - high contrast objects
 
-This enhancement works with all display modes.
+Both baseline and high contrast enhancement work with all display modes.
 
 ---
 
@@ -180,9 +185,10 @@ Users should continue to rely on appropriate mobility aids and assistance where 
 
 Continuous camera usage increases power consumption.
 
-The viewer includes optimisations to reduce heat and battery usage:
+The viewer includes browser-level requests and lightweight processing choices to
+reduce heat and battery usage where supported:
 
-- reduced camera frame rate (24fps)
+- reduced camera frame rate request (24fps)
 - GPU-accelerated visual filters
 - low-resolution brightness sampling
 - reduced brightness analysis frequency
@@ -213,3 +219,94 @@ Design principles include:
 The viewer can be added to the device Home Screen using the browser **Add to Home Screen** feature.
 
 This allows it to launch like a simple standalone application.
+
+---
+
+## Development
+
+The app is a static browser page with no build step. You can open `index.html`
+directly, or serve the folder with any simple static web server.
+
+Files:
+
+- `index.html` contains the document metadata and app markup.
+- `src/styles.css` contains all visual layout and button styling.
+- `src/app.js` contains camera, freeze/share, zoom, filter, brightness, speech,
+  and panel behaviour.
+- `icon.png` and `icon.svg` provide app icons.
+
+The project is intentionally dependency-light. The development tools are only
+used to keep the files tidy and catch simple mistakes; they are not needed by the
+app when it runs in the browser.
+
+### First-time setup
+
+Install the development tools:
+
+```sh
+npm install
+```
+
+This creates a `node_modules` folder on your computer. That folder is ignored by
+Git and does not need to be copied or edited.
+
+### Before finishing a change
+
+Check that the files are neatly formatted:
+
+```sh
+npm run check:format
+```
+
+Check the JavaScript for common mistakes:
+
+```sh
+npm run lint
+```
+
+If the formatting check says a file needs attention, let Prettier fix it:
+
+```sh
+npm run format
+```
+
+Then run the two checks again:
+
+```sh
+npm run check:format
+npm run lint
+```
+
+## Change Guidelines
+
+This app is intentionally small and direct. Future changes should preserve that
+quality.
+
+- Prefer focused edits to one behaviour at a time.
+- Preserve the static browser runtime: no framework, bundler, or build output by
+  default.
+- Keep the safety disclaimer visible in the info panel and documented here.
+- Camera, torch, share, and Add to Home Screen behaviour should be checked on
+  real mobile browsers when touched.
+- Frozen images should continue to match the current live view, including zoom,
+  display mode, contrast, and adaptive brightness.
+
+## Manual QA Checklist
+
+Use this checklist after changes, especially changes to camera behaviour, visual
+filters, sharing, or mobile layout.
+
+- App opens and asks for camera access.
+- Rear camera is selected where supported.
+- Tap reveals OPTIONS, INFO, and FREEZE.
+- OPTIONS pauses the camera and RESUME returns to live view.
+- INFO pauses the camera and CLOSE returns to live view.
+- Zoom levels 0-10 update the live view and button state.
+- DEFAULT, INVERT, and MONO modes work.
+- CONTRAST toggles the high contrast state.
+- FREEZE captures the current enhanced view.
+- SHARE appears only while frozen and opens the device share sheet where
+  supported.
+- TORCH works on compatible devices and fails quietly otherwise.
+- AUDIO can be toggled off and on.
+- RELOAD refreshes after the spoken countdown.
